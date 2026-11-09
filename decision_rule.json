@@ -1,0 +1,77 @@
+{
+ "written_at": "2026-11-05, before any smoke run, dump or measure. The prompts had been read; no decode state, set size or bound width had been computed on a real model.",
+ "status": "Fixed before the run. analyze.py refused to run if this file's SHA-256 differed from the hash logged when it was written. This published copy has the status, budget and cut_rule fields reworded to remove internal notes and spending figures, so its hash differs from the logged one; no rule, threshold or definition changed.",
+ "question": "On real decode states, how many vocabulary rows does each certificate leave for BF16 recompute when the first pass reads a 4-bit head, and how many head bytes per token does that cost?",
+ "source": "literature-review.md section 6. The confirm and kill thresholds below are that section's, written on 3 November, before this run.",
+ "models": {
+  "gemma4e4b": "google/gemma-4-E4B-it at 4ecc2ba6. Apache 2.0, not gated. Tied head 262,144 x 2,560, soft-cap 30.",
+  "qwen3_8b": "Qwen/Qwen3-8B at b968826d. Apache 2.0, not gated. Untied head 151,936 x 4,096.",
+  "sarvam30b": "sarvamai/sarvam-30b at 071ae95e. Apache 2.0, not gated. Untied head 262,144 x 4,096. Stretch. Custom code, pinned and hash-checked before it loads. It runs only if the cut rule allows it."
+ },
+ "prompts": {
+  "groups": "english (40, MT-Bench first-turn questions, every second one), code (40, HumanEval tasks 0 to 39), and hindi, bengali, tamil, telugu (40 each, a translation of five consecutive English sentences). The same 40 passages serve all four languages.",
+  "deviation_flores": "The review names the Flores-IN dev split. Flores-IN is CC BY-SA 4.0, whose text says that exercising the licensed rights binds the user to its terms. Under the brief's licence rule we skipped it. The passages come from PleIAs/US-PD-Newspapers at 39dc0a2a (CC0, not gated), filtered for OCR noise. Only the English source text comes from this corpus. The states we measure are the model's own output in the target script, and control C7 checks that.",
+  "continuations": "Each prompt gets one greedy and one T = 1 continuation of up to 128 new tokens, at batch 16 in BF16. States after EOS are dropped. Qwen3 and Sarvam run with thinking turned off in the chat template, or their first 128 tokens would be English reasoning in every group."
+ },
+ "reference": "The reference logit is the FP32-accumulated product of the BF16 head row and the BF16 hidden state, in our fixed matmul. It is not the stock serving kernel and it is not exact arithmetic. A decision is 'identical' if it matches this reference. Gemma 4 logits pass through the soft-cap before any rule.",
+ "heads": {
+  "int8": "INT8 per row, one FP16 scale per row. The published baseline.",
+  "int4": "INT4 symmetric round-to-nearest, groups of 128, FP16 scales rounded up, s = max/7.",
+  "int4d": "The same with subtractive dither: one pattern shared by all rows, scaled by each row's group scale. s = max/6.5, so that no code clips.",
+  "int4h": "INT4 after a rotation: random permutation, random signs, Hadamard on blocks of 512. h gets the same rotation.",
+  "nvfp4": "NVFP4 emulation: E2M1 values, E4M3 block scales per 16 elements, FP32 tensor scale."
+ },
+ "bounds": {
+  "worst": "Sum over groups of the group's largest stored rounding error times the l1 norm of h on that group.",
+  "resid": "Sum over groups of the group's residual l2 norm times the l2 norm of h on that group.",
+  "dither": "Hoeffding at a per-row tail of 1e-15 on the int4d head: 4.197 times the l2 norm of s_g ||h_g||. This is a high-probability bound over the one dither draw, not a deterministic one.",
+  "oracle": "The true error of each row. No certificate can beat it. Never eligible.",
+  "slack": "Every bound except the oracle adds 3 d u ||w_v|| ||h|| for FP32 sums, with u = 2^-24, and interval ends add 1e-4. Stored error values are FP16 rounded up."
+ },
+ "rules": {
+  "greedy": "Rows whose upper end reaches the largest lower end.",
+  "gumbel_t0.6, gumbel_t1.0": "The same on scores/T + g, with counter-based Gumbel noise keyed by prompt, step, mode and token id.",
+  "topk50_t1.0": "Top 50 by score, then Gumbel-max at T = 1. Rows that could win the race are read; if any of them has uncertain membership, all rows of uncertain membership are read too.",
+  "minp0.05_t1.0": "Keep rows within T ln p of the maximum, then Gumbel-max at T = 1. Rows that could win the race are read; if any of them has uncertain membership, the rows that could hold the maximum are read too.",
+  "states": "The greedy rule is scored on greedy states. All sampling rules are scored on T = 1 states. The greedy rule on T = 1 states is a readout only."
+ },
+ "cascade": "Rows on a 4-bit shortlist take the intersection of their 4-bit interval and their INT8 residual-norm interval, and the same rule runs again. Bases: int4 worst, int4 resid, int4d dither, int4h resid, nvfp4 resid.",
+ "byte_model": "Per state, as a fraction of the BF16 head: first pass (int8 0.5 + 1/d; int4, int4d, int4h 0.25 + 1/128; nvfp4 0.28125), plus bound metadata (1/128 for worst or resid on a 4-bit head, 1/d on int8, 0 for dither), plus 1/d for the row norm in the slack, plus |S|/V x (0.5 + 2/d) for a cascade, plus |R|/V. This counts bytes. It says nothing about time.",
+ "eligible_4bit_certificates": ["int4|worst", "int4|resid", "int4d|worst", "int4d|resid", "int4d|dither", "int4h|worst", "int4h|resid", "nvfp4|worst", "nvfp4|resid", "int4|worst+int8", "int4|resid+int8", "int4d|dither+int8", "int4h|resid+int8", "nvfp4|resid+int8"],
+ "eligibility_note": "The review says 'best sound certificate, worst-case or dithered'. We also allow the residual-norm bound, which is sound, and the cascades, which the kill clause names. summary.json reports whether the outcome changes if only worst-case and dithered single-stage certificates count. Dithered certificates are eligible only if C5 passes.",
+ "controls": {
+  "C1_alignment": "As amended, see amendment_1. On greedy states, the argmax of the head product in BF16 from the stored h equals the token the model emitted on at least 95% of states, and the same test with tokens shifted by one state agrees on at most 5%. This catches a hook or a state mapping that is wrong. How often the FP32 reference argmax equals the emitted token is a readout, with no gate.",
+  "C2_soundness": "Zero rows over all states where the true error exceeds a worst or resid bound plus slack, on every head.",
+  "C3_exactness": "On every state, rule and non-dither certificate, the token got by reading exact values only where the certificate says equals the reference token. A mismatch that sits on an exact tie at the top-k boundary is logged and not counted.",
+  "C4_oracle_order": "On greedy, the oracle set of a head is never larger than the set of a single-stage certificate on that head.",
+  "C5_dither": "Zero rows beyond the dithered bound plus slack, zero token mismatches for dithered certificates, and mean squared normalised error between 0.85 and 1.15, where the normalising variance is the one predicted for uniform errors. If this fails, dithered certificates drop out and the rest of the rule stands.",
+  "C6_planted": "On the first chunk of each mode: 2% of the resid bound must show violations; a head with shuffled rows must show violations; a set with the winner removed must give a wrong token on every state; an exact head with a zero bound must leave one row on at least 95% of states; an empty head must leave at least 99% of rows and no violations; FP32 against FP64 differences on 64 states must sit inside the slack.",
+  "C7_language": "In each Indian-language group, at least half of the letters in the output are in the target script, on the median prompt, per model and mode. A group that fails is flagged in the table and stays in the rule.",
+  "C8_sampling": "On T = 1 states, mean negative log probability of the emitted token over mean entropy is between 0.9 and 1.1. This catches a top-k or top-p setting leaking in from generation_config.",
+  "C9_selftest": "cert_core.py's self tests pass, including vectorised sets against a plain definition on every rule.",
+  "if_failed": "C1, C2, C3, C4, C6, C8 or C9 failing on a model gives MEASUREMENT_BROKEN for that model: no outcome from it, and the failure is reported."
+ },
+ "confirm": "For a model with V = 262,144 (Gemma 4 E4B, and Sarvam-30B if it ran to completion), one eligible certificate meets all of these for the greedy rule and the gumbel_t1.0 rule in every language group: median |R| <= 0.1% of V, 99th percentile |R| <= 1% of V, median total head bytes <= 0.35 of BF16. The 0.35 is our reading of the review's 'near 0.3'.",
+ "kill": "For a model with V = 262,144, for both the greedy rule and the gumbel_t1.0 rule, every eligible certificate has median total head bytes >= 0.5 of BF16 over all states of that rule.",
+ "outcomes": {
+  "CONFIRMED": "Confirm holds on every 262K model that ran. The 4-bit claim stands for bytes, and kernel work can start in week 3.",
+  "KILLED": "Kill holds on every 262K model that ran. A 4-bit first pass is no better than the INT8 certificates that exist. The paper turns into a measurement study of INT8 certificates across sampling rules, temperatures, languages and L4 or T4 GPUs.",
+  "MIDDLE": "Anything else. The claim narrows to the rules and languages that work, and the per-rule status below names them.",
+  "MEASUREMENT_BROKEN": "A control failed on Gemma 4 E4B. No outcome. If only Sarvam-30B or Qwen3-8B fails, the outcome rests on the models that passed and the failure is reported.",
+  "INCOMPLETE": "Gemma 4 E4B did not finish inside the budget. Whatever finished is reported as partial and no outcome is given."
+ },
+ "per_rule_status": "For each model and each of the five rules, on the best eligible certificate for that rule: GATES_PASS (the three confirm gates in every language group), CHEAP (median bytes <= 0.35 in every group, size gates fail), UNDER_HALF (median bytes < 0.5 in every group), MIXED (under 0.5 over all states but not in every group), DEAD (median bytes >= 0.5 over all states). Best means lowest median bytes over all states, then lowest 99th percentile of |R|.",
+ "qwen3": "Qwen3-8B is outside the confirm and kill clauses, as in the review. Its table is reported, and it is the model of the student's ablations.",
+ "readouts_no_gate": [
+  "Width gain of dither: median over states of mean worst bound on int4 over mean dithered bound on int4d. The review's estimate is about 6 times at d = 4,096 on Gaussian-looking states, and it expects real states to shrink it.",
+  "Ratio of each bound to the true largest error, per state.",
+  "4-bit total bytes against the measured INT8 baseline, per rule.",
+  "The greedy rule on T = 1 states, the T = 0.6 rule, top-k and min-p per language.",
+  "Head share of weight bytes read per token, from the safetensors headers, in logs/byte_share.json."
+ ],
+ "percentile_method": "Nearest rank (numpy method inverted_cdf).",
+ "cut_rule": "After the smoke runs, using throughput and cost only. Project each model's dump and measure at list price times 1.03. If money used plus all three is within the planned budget, run all three. Otherwise drop Sarvam-30B. If two models still exceed it, use 20 prompts per group. If that still exceeds it, Gemma 4 E4B only at 20 prompts per group.",
+ "budget": "A fixed compute budget with a hard stop. Each stage gets a wall-clock limit from the money left at list price times 1.03, and ctl.py refuses to start a stage once the guard is reached. Modal billing for apps irb07-exp01 and irb07-exp01-lock is the number we report. The optional L4 timing in the review is outside this rule.",
+ "amendment_1": "Made on 5 November after the smoke runs and before any main dump or measure. No set size, bound width or byte figure had been read; the smoke sets are on the volume and were never pulled. The original C1 compared the emitted token with the FP32 reference argmax. On Sarvam-30B's smoke states that agreed on 93.1% of 144 states, below the 95% gate, and logs/diag_alignment_smoke.log shows why: its top logit is about 200, where one BF16 step is 1.0, and the head product in BF16 from the same stored h agrees on 99.3%. So the original test would have flagged rounding in the model's own head as a broken mapping. The threshold is unchanged; only the product it tests is changed. The reference for every rule stays FP32, so a token from the stock BF16 head can differ from it, and that rate is reported.",
+ "not_run": "Stock vLLM or SGLang heads, GPU kernels, any timing that claims a speed-up, top-p, and Flores-IN."
+}

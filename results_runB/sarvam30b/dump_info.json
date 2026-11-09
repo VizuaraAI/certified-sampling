@@ -1,0 +1,25 @@
+{
+ "load_s": 112.6,
+ "cls": "SarvamMoEForCausalLM",
+ "torch": "2.5.1+cu124",
+ "transformers": "4.57.2",
+ "head_shape": [
+  262144,
+  4096
+ ],
+ "head_sha256": "05e854792a529e2fd4ac82ce4fe285aa9aca01a71dc9a0a3456c2f5134836278",
+ "eos": [
+  26
+ ],
+ "gpu": "NVIDIA A100-SXM4-80GB",
+ "vram_gib": 79.3,
+ "tied_to_input": false,
+ "prompt_tokens_max": 375,
+ "eos_text": [
+  "<|end_of_turn|>"
+ ],
+ "sample_prompt_tail": " in Japan?<|nothink|><|end_of_turn|>\n<|start_of_turn|><|assistant|>\n<think></think>\n",
+ "dump_s": 2076.7,
+ "n_states": 54504,
+ "s_per_state": 0.03810204892506355
+}

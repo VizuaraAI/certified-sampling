@@ -1,0 +1,29 @@
+{
+ "load_s": 15.5,
+ "cls": "Gemma4ForConditionalGeneration",
+ "torch": "2.13.0+cu130",
+ "transformers": "5.19.0",
+ "head_shape": [
+  262144,
+  2560
+ ],
+ "head_sha256": "83574e60aa182da473b9fbb23b4320af80c57f98a0df1e2df56546181a51d252",
+ "eos": [
+  1,
+  50,
+  106
+ ],
+ "gpu": "NVIDIA A100-SXM4-80GB",
+ "vram_gib": 79.3,
+ "tied_to_input": true,
+ "prompt_tokens_max": 370,
+ "eos_text": [
+  "<eos>",
+  "<|tool_response>",
+  "<turn|>"
+ ],
+ "sample_prompt_tail": " norms when doing business in Japan?<turn|>\n<|turn>model\n",
+ "dump_s": 337.7,
+ "n_states": 48051,
+ "s_per_state": 0.007028353821834102
+}

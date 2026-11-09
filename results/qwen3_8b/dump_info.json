@@ -1,0 +1,27 @@
+{
+ "load_s": 12.3,
+ "cls": "Qwen3ForCausalLM",
+ "torch": "2.13.0+cu130",
+ "transformers": "5.19.0",
+ "head_shape": [
+  151936,
+  4096
+ ],
+ "head_sha256": "5ed9f2fa35690ba548a35f4c0662d2e6276d0873c5b379c674df3d1151c7efee",
+ "eos": [
+  151643,
+  151645
+ ],
+ "gpu": "NVIDIA A100 80GB PCIe",
+ "vram_gib": 79.3,
+ "tied_to_input": false,
+ "prompt_tokens_max": 368,
+ "eos_text": [
+  "<|endoftext|>",
+  "<|im_end|>"
+ ],
+ "sample_prompt_tail": " in Japan?<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+ "dump_s": 159.6,
+ "n_states": 55298,
+ "s_per_state": 0.002885411137409066
+}

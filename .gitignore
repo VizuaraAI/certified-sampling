@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.env
+.env.*
+logs/
+results/*/measure/
+results_runB/*/measure/
+results/posthoc_topk/
+results/smoke/
+results/plan.json
+results/billing.json
+results/costlog.jsonl

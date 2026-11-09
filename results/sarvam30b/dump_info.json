@@ -1,0 +1,25 @@
+{
+ "load_s": 103.1,
+ "cls": "SarvamMoEForCausalLM",
+ "torch": "2.5.1+cu124",
+ "transformers": "4.57.2",
+ "head_shape": [
+  262144,
+  4096
+ ],
+ "head_sha256": "05e854792a529e2fd4ac82ce4fe285aa9aca01a71dc9a0a3456c2f5134836278",
+ "eos": [
+  26
+ ],
+ "gpu": "NVIDIA A100-SXM4-80GB",
+ "vram_gib": 79.3,
+ "tied_to_input": false,
+ "prompt_tokens_max": 372,
+ "eos_text": [
+  "<|end_of_turn|>"
+ ],
+ "sample_prompt_tail": " when doing business in Japan?<|nothink|><|end_of_turn|>\n<|start_of_turn|><|assistant|>\n",
+ "dump_s": 1153.3,
+ "n_states": 61440,
+ "s_per_state": 0.018771489201268803
+}
